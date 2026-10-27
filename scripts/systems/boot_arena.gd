@@ -68,7 +68,7 @@ func _build_arena() -> void:
 
 	var floor := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(26, 26)
+	plane.size = Vector2(40, 32)
 	floor.mesh = plane
 	var floor_mat := StandardMaterial3D.new()
 	floor_mat.albedo_color = Color(0.105, 0.11, 0.15)
@@ -79,7 +79,7 @@ func _build_arena() -> void:
 	var floor_body := StaticBody3D.new()
 	var floor_collision := CollisionShape3D.new()
 	var floor_shape := BoxShape3D.new()
-	floor_shape.size = Vector3(26, 0.3, 26)
+	floor_shape.size = Vector3(40, 0.3, 32)
 	floor_collision.shape = floor_shape
 	floor_collision.position.y = -0.16
 	floor_body.add_child(floor_collision)
@@ -91,7 +91,7 @@ func _build_arena() -> void:
 		var wall := StaticBody3D.new()
 		var wall_mesh := MeshInstance3D.new()
 		var box := BoxMesh.new()
-		box.size = Vector3(26.5, 1.0, 0.6) if i < 2 else Vector3(0.6, 1.0, 26.5)
+		box.size = Vector3(40.5, 1.0, 0.6) if i < 2 else Vector3(0.6, 1.0, 32.5)
 		wall_mesh.mesh = box
 		wall_mesh.material_override = rim_mat
 		wall.add_child(wall_mesh)
@@ -101,16 +101,16 @@ func _build_arena() -> void:
 		shape_node.shape = shape
 		wall.add_child(shape_node)
 		match i:
-			0: wall.position = Vector3(0, 0.5, -13)
-			1: wall.position = Vector3(0, 0.5, 13)
-			2: wall.position = Vector3(-13, 0.5, 0)
-			3: wall.position = Vector3(13, 0.5, 0)
+			0: wall.position = Vector3(0, 0.5, -16)
+			1: wall.position = Vector3(0, 0.5, 16)
+			2: wall.position = Vector3(-20, 0.5, 0)
+			3: wall.position = Vector3(20, 0.5, 0)
 		add_child(wall)
 
 	# Broken-stone-like pillars establish a ruined arena silhouette.
 	var pillar_mat := StandardMaterial3D.new()
 	pillar_mat.albedo_color = Color(0.19, 0.18, 0.23)
-	for p in [Vector3(-8, 0.8, -7), Vector3(8, 0.8, -7), Vector3(-8, 0.8, 7), Vector3(8, 0.8, 7)]:
+	for p in [Vector3(-14, 0.8, -10), Vector3(14, 0.8, -10), Vector3(-14, 0.8, 10), Vector3(14, 0.8, 10)]:
 		var pillar := MeshInstance3D.new()
 		var pillar_mesh := BoxMesh.new()
 		pillar_mesh.size = Vector3(1.4, 1.6, 1.4)
@@ -120,10 +120,10 @@ func _build_arena() -> void:
 		add_child(pillar)
 
 	arena_camera = Camera3D.new()
-	arena_camera.position = Vector3(0, 15, 13)
-	arena_camera.rotation_degrees = Vector3(-48, 0, 0)
+	arena_camera.position = Vector3(0, 12.5, 10.5)
+	arena_camera.rotation_degrees = Vector3(-50, 0, 0)
 	arena_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	arena_camera.size = 19.5
+	arena_camera.size = 16.5
 	arena_camera.current = true
 	add_child(arena_camera)
 
@@ -196,8 +196,8 @@ func _update_hero(delta: float) -> void:
 	hero.velocity.z = direction.z * HERO_SPEED
 	hero.velocity.y = 0
 	hero.move_and_slide()
-	hero.position.x = clampf(hero.position.x, -11.5, 11.5)
-	hero.position.z = clampf(hero.position.z, -11.5, 11.5)
+	hero.position.x = clampf(hero.position.x, -17.5, 17.5)
+	hero.position.z = clampf(hero.position.z, -13.5, 13.5)
 	if direction.length_squared() > 0.01:
 		hero.look_at(hero.global_position + direction, Vector3.UP)
 
@@ -225,7 +225,7 @@ func _update_enemy(delta: float) -> void:
 func _update_camera() -> void:
 	if is_instance_valid(hero) and is_instance_valid(arena_camera):
 		arena_camera.position.x = lerpf(arena_camera.position.x, hero.position.x, 0.06)
-		arena_camera.position.z = lerpf(arena_camera.position.z, hero.position.z + 13.0, 0.06)
+		arena_camera.position.z = lerpf(arena_camera.position.z, hero.position.z + 10.5, 0.06)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -260,12 +260,12 @@ func _build_ui() -> void:
 	joystick_base = ColorRect.new()
 	joystick_base.color = Color(0.16, 0.19, 0.29, 0.62)
 	joystick_base.size = Vector2(148, 148)
-	joystick_base.position = Vector2(28, -176)
+	joystick_base.position = Vector2(44, -184)
 	joystick_base.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE)
 	joystick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(joystick_base)
 	joystick_base.draw.connect(_draw_joystick_base)
-	joystick_center = Vector2(102, -102)
+	joystick_center = Vector2(118, -110)
 
 	joystick_knob = ColorRect.new()
 	joystick_knob.color = Color(0.48, 0.58, 0.9, 0.9)
@@ -283,6 +283,7 @@ func _build_ui() -> void:
 	restart_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE)
 	restart_button.position = Vector2(-116, 18)
 	restart_button.pressed.connect(_restart_game)
+	restart_button.visible = false
 
 func _make_button(parent: Control, caption: String, offset: Vector2, tint: Color) -> Button:
 	var button := Button.new()
@@ -315,7 +316,7 @@ func _input(event: InputEvent) -> void:
 	if game_over:
 		return
 	if event is InputEventScreenTouch:
-		var base_rect := Rect2(Vector2(28, get_viewport().get_visible_rect().size.y - 176), Vector2(148, 148))
+		var base_rect := Rect2(Vector2(44, get_viewport().get_visible_rect().size.y - 184), Vector2(148, 148))
 		if event.pressed and base_rect.has_point(event.position) and joystick_touch_index == -1:
 			joystick_touch_index = event.index
 			_update_joystick(event.position)
@@ -333,18 +334,18 @@ func _input(event: InputEvent) -> void:
 
 func _update_joystick(screen_position: Vector2) -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
-	var center := Vector2(102, viewport_size.y - 102)
+	var center := Vector2(118, viewport_size.y - 110)
 	var delta := screen_position - center
 	if delta.length() > joystick_radius:
 		delta = delta.normalized() * joystick_radius
 	joystick_vector = Vector2(delta.x / joystick_radius, delta.y / joystick_radius)
 	if is_instance_valid(joystick_knob):
-		joystick_knob.position = Vector2(28, viewport_size.y - 176) + Vector2(45, 45) + delta
+		joystick_knob.position = Vector2(44, viewport_size.y - 184) + Vector2(45, 45) + delta
 
 func _reset_joystick_knob() -> void:
 	if is_instance_valid(joystick_knob):
 		var h := get_viewport().get_visible_rect().size.y
-		joystick_knob.position = Vector2(73, h - 131)
+		joystick_knob.position = Vector2(89, h - 139)
 
 func _cast_arcane_bolt() -> void:
 	if game_over or bolt_cooldown > 0.0 or not is_instance_valid(enemy):
@@ -391,8 +392,8 @@ func _blink_step() -> void:
 		direction.y = 0
 	if direction.length_squared() > 0.01:
 		hero.global_position += direction.normalized() * BLINK_DISTANCE
-		hero.position.x = clampf(hero.position.x, -11.5, 11.5)
-		hero.position.z = clampf(hero.position.z, -11.5, 11.5)
+		hero.position.x = clampf(hero.position.x, -17.5, 17.5)
+		hero.position.z = clampf(hero.position.z, -13.5, 13.5)
 		_show_message("BLINK STEP")
 
 func _finish_game(victory: bool) -> void:
