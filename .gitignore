@@ -1,0 +1,27 @@
+# Godot editor/import cache
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Generated exports and build output
+/build/
+/dist/
+/exported/
+*.apk
+*.aab
+*.pck
+*.zip
+
+# Local IDE/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local signing material and secrets
+*.keystore
+*.jks
+.env
+.env.*
+!.env.example
