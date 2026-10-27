@@ -19,6 +19,25 @@ func _capture_arena() -> void:
 	for _frame in range(4):
 		await process_frame
 
+	# Regression checks: touch controls must be present and fully inside the viewport.
+	var viewport_size := root.get_visible_rect().size
+	for control_name in ["joystick_base", "joystick_knob", "attack_button", "blink_button"]:
+		var control := scene_instance.get(control_name) as Control
+		if control == null:
+			push_error("Required mobile control is missing: %s" % control_name)
+			quit(1)
+			return
+		var rect := control.get_global_rect()
+		if rect.position.x < 0 or rect.position.y < 0 or rect.end.x > viewport_size.x or rect.end.y > viewport_size.y:
+			push_error("Mobile control is outside viewport: %s -> %s" % [control_name, rect])
+			quit(1)
+			return
+	if not (scene_instance.get("joystick_base") is Panel):
+		push_error("Joystick base must be a styled circular Panel, not a plain block.")
+		quit(1)
+		return
+	print("VISUAL_SMOKE_CONTROLS=all present and within %s x %s" % [viewport_size.x, viewport_size.y])
+
 	var image := root.get_texture().get_image()
 	if image.is_empty():
 		push_error("Arena screenshot capture returned an empty image.")
