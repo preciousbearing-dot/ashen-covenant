@@ -446,7 +446,7 @@ func _update_hit_feedback() -> void:
 			if hit_material:
 				hit_material.emission_enabled = true
 				hit_material.emission = Color(0.95, 0.28, 0.12) * (enemy_hit_flash / 0.16)
-		elif is_instance_valid(enemy):
+		elif is_instance_valid(enemy) and not enemy_is_winding_up:
 			var enemy_visual_reset := enemy.get_node_or_null("Visual") as MeshInstance3D
 			if enemy_visual_reset:
 				var reset_material := enemy_visual_reset.material_override as StandardMaterial3D
