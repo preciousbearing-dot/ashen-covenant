@@ -76,6 +76,27 @@ func _build_arena() -> void:
 	floor.material_override = floor_mat
 	add_child(floor)
 
+	# Subtle stone joints add scale without heavy textures or large assets.
+	var seam_mat := StandardMaterial3D.new()
+	seam_mat.albedo_color = Color(0.055, 0.061, 0.085)
+	seam_mat.roughness = 1.0
+	for x in [-16, -12, -8, -4, 0, 4, 8, 12, 16]:
+		var seam := MeshInstance3D.new()
+		var seam_mesh := BoxMesh.new()
+		seam_mesh.size = Vector3(0.035, 0.018, 30.0)
+		seam.mesh = seam_mesh
+		seam.position = Vector3(float(x), 0.012, 0)
+		seam.material_override = seam_mat
+		add_child(seam)
+	for z in [-12, -8, -4, 0, 4, 8, 12]:
+		var seam := MeshInstance3D.new()
+		var seam_mesh := BoxMesh.new()
+		seam_mesh.size = Vector3(38.0, 0.018, 0.035)
+		seam.mesh = seam_mesh
+		seam.position = Vector3(0, 0.014, float(z))
+		seam.material_override = seam_mat
+		add_child(seam)
+
 	var floor_body := StaticBody3D.new()
 	var floor_collision := CollisionShape3D.new()
 	var floor_shape := BoxShape3D.new()
@@ -409,6 +430,7 @@ func _restart_game() -> void:
 	hero_health = 5
 	game_over = false
 	invulnerability = 0.0
+	bolt_cooldown = 0.0
 	enemy_attack_cooldown = 0.0
 	_build_hero()
 	_spawn_enemy()
