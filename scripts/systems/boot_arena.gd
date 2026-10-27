@@ -22,8 +22,8 @@ var joystick_radius := 74.0
 var hud_label: Label
 var health_label: Label
 var message_label: Label
-var joystick_base: ColorRect
-var joystick_knob: ColorRect
+var joystick_base: Panel
+var joystick_knob: Panel
 var attack_button: Button
 var blink_button: Button
 var restart_button: Button
@@ -78,7 +78,7 @@ func _build_arena() -> void:
 
 	# Subtle stone joints add scale without heavy textures or large assets.
 	var seam_mat := StandardMaterial3D.new()
-	seam_mat.albedo_color = Color(0.055, 0.061, 0.085)
+	seam_mat.albedo_color = Color(0.075, 0.08, 0.105)
 	seam_mat.roughness = 1.0
 	for x in [-16, -12, -8, -4, 0, 4, 8, 12, 16]:
 		var seam := MeshInstance3D.new()
@@ -131,10 +131,10 @@ func _build_arena() -> void:
 	# Broken-stone-like pillars establish a ruined arena silhouette.
 	var pillar_mat := StandardMaterial3D.new()
 	pillar_mat.albedo_color = Color(0.19, 0.18, 0.23)
-	for p in [Vector3(-14, 0.8, -10), Vector3(14, 0.8, -10), Vector3(-14, 0.8, 10), Vector3(14, 0.8, 10)]:
+	for p in [Vector3(-9, 1.0, -7), Vector3(9, 1.0, -7), Vector3(-9, 1.0, 7), Vector3(9, 1.0, 7)]:
 		var pillar := MeshInstance3D.new()
 		var pillar_mesh := BoxMesh.new()
-		pillar_mesh.size = Vector3(1.4, 1.6, 1.4)
+		pillar_mesh.size = Vector3(1.6, 2.0, 1.6)
 		pillar.mesh = pillar_mesh
 		pillar.position = p
 		pillar.material_override = pillar_mat
@@ -144,7 +144,7 @@ func _build_arena() -> void:
 	arena_camera.position = Vector3(0, 12.5, 10.5)
 	arena_camera.rotation_degrees = Vector3(-50, 0, 0)
 	arena_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	arena_camera.size = 16.5
+	arena_camera.size = 13.5
 	arena_camera.current = true
 	add_child(arena_camera)
 
@@ -247,9 +247,9 @@ func _spawn_enemy() -> void:
 	enemy = _make_actor("AshenHollow", Color(0.68, 0.22, 0.25), Vector3(0, 0.8, -4), false)
 	var marker := Label3D.new()
 	marker.text = "ASHEN HOLLOW"
-	marker.font_size = 32
-	marker.pixel_size = 0.012
-	marker.position = Vector3(0, 1.4, 0)
+	marker.font_size = 28
+	marker.pixel_size = 0.01
+	marker.position = Vector3(0, 2.0, 0)
 	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	enemy.add_child(marker)
 
@@ -324,9 +324,9 @@ func _build_ui() -> void:
 	message_label = Label.new()
 	message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	message_label.offset_left = -250
-	message_label.offset_top = 92
+	message_label.offset_top = 22
 	message_label.offset_right = 250
-	message_label.offset_bottom = 132
+	message_label.offset_bottom = 60
 	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message_label.add_theme_font_size_override("font_size", 21)
 	message_label.add_theme_color_override("font_color", Color(0.75, 0.82, 1.0))
@@ -334,23 +334,32 @@ func _build_ui() -> void:
 	message_label.text = "DEFEAT THE ASHEN HOLLOW"
 
 	# Anchor-based safe margins keep touch controls inside the visible viewport.
-	joystick_base = ColorRect.new()
-	joystick_base.color = Color(0.16, 0.19, 0.29, 0.62)
+	joystick_base = Panel.new()
 	joystick_base.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	joystick_base.position = Vector2(32, get_viewport().get_visible_rect().size.y - 178)
 	joystick_base.size = Vector2(148, 148)
 	joystick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var base_style := StyleBoxFlat.new()
+	base_style.bg_color = Color(0.12, 0.16, 0.27, 0.68)
+	base_style.border_color = Color(0.42, 0.52, 0.78, 0.88)
+	base_style.set_border_width_all(3)
+	base_style.set_corner_radius_all(74)
 	root.add_child(joystick_base)
-	joystick_base.draw.connect(_draw_joystick_base)
+	joystick_base.add_theme_stylebox_override("panel", base_style)
 	joystick_center = Vector2(106, get_viewport().get_visible_rect().size.y - 104)
 
-	joystick_knob = ColorRect.new()
-	joystick_knob.color = Color(0.48, 0.58, 0.9, 0.9)
+	joystick_knob = Panel.new()
 	joystick_knob.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	joystick_knob.position = Vector2(77, get_viewport().get_visible_rect().size.y - 133)
 	joystick_knob.size = Vector2(58, 58)
 	joystick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var knob_style := StyleBoxFlat.new()
+	knob_style.bg_color = Color(0.48, 0.61, 0.98, 0.96)
+	knob_style.border_color = Color(0.78, 0.85, 1.0)
+	knob_style.set_border_width_all(2)
+	knob_style.set_corner_radius_all(29)
 	root.add_child(joystick_knob)
+	joystick_knob.add_theme_stylebox_override("panel", knob_style)
 
 	attack_button = _make_button(root, "ARCANE BOLT", Vector2(get_viewport().get_visible_rect().size.x - 144, get_viewport().get_visible_rect().size.y - 196), Color(0.22, 0.34, 0.78))
 	attack_button.pressed.connect(_cast_arcane_bolt)
