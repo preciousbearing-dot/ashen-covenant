@@ -245,13 +245,6 @@ func _build_hero() -> void:
 func _spawn_enemy() -> void:
 	enemy_health = ENEMY_MAX_HEALTH
 	enemy = _make_actor("AshenHollow", Color(0.68, 0.22, 0.25), Vector3(0, 0.8, -4), false)
-	var marker := Label3D.new()
-	marker.text = "ASHEN HOLLOW"
-	marker.font_size = 28
-	marker.pixel_size = 0.01
-	marker.position = Vector3(0, 2.0, 0)
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	enemy.add_child(marker)
 
 func _update_hero(delta: float) -> void:
 	var input_vector := joystick_vector
