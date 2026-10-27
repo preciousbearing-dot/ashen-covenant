@@ -30,6 +30,7 @@ var restart_button: Button
 var game_over := false
 var arena_camera: Camera3D
 var camera_shake := 0.0
+var enemy_hit_flash := 0.0
 
 func _ready() -> void:
 	_build_arena()
@@ -45,8 +46,10 @@ func _physics_process(delta: float) -> void:
 	bolt_cooldown = maxf(0.0, bolt_cooldown - delta)
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
 	invulnerability = maxf(0.0, invulnerability - delta)
+	enemy_hit_flash = maxf(0.0, enemy_hit_flash - delta)
 	_update_hero(delta)
 	_update_enemy(delta)
+	_update_hit_feedback()
 	_update_camera(delta)
 	_update_hud()
 
@@ -374,6 +377,26 @@ func _update_enemy(delta: float) -> void:
 			if hero_health <= 0:
 				_finish_game(false)
 
+func _update_hit_feedback() -> void:
+	# Brief, readable flashes communicate damage without costly post-processing.
+	if is_instance_valid(hero):
+		var hero_visual := hero.get_node_or_null("Visual") as MeshInstance3D
+		if hero_visual:
+			hero_visual.visible = invulnerability <= 0.0 or int(Time.get_ticks_msec() / 90) % 2 == 0
+	if is_instance_valid(enemy):
+		var enemy_visual := enemy.get_node_or_null("Visual") as MeshInstance3D
+		if enemy_visual and enemy_hit_flash > 0.0:
+			var hit_material := enemy_visual.material_override as StandardMaterial3D
+			if hit_material:
+				hit_material.emission_enabled = true
+				hit_material.emission = Color(0.95, 0.28, 0.12) * (enemy_hit_flash / 0.16)
+		elif is_instance_valid(enemy):
+			var enemy_visual_reset := enemy.get_node_or_null("Visual") as MeshInstance3D
+			if enemy_visual_reset:
+				var reset_material := enemy_visual_reset.material_override as StandardMaterial3D
+				if reset_material:
+					reset_material.emission_enabled = false
+
 func _update_camera(delta: float) -> void:
 	if is_instance_valid(hero) and is_instance_valid(arena_camera):
 		camera_shake = maxf(0.0, camera_shake - delta * 2.8)
@@ -525,6 +548,10 @@ func _cast_arcane_bolt() -> void:
 	to_enemy.y = 0
 	if to_enemy.length() <= 8.0:
 		enemy_health -= 1
+		enemy_hit_flash = 0.16
+		# A small recoil makes a confirmed hit feel physical, while keeping the fight readable.
+		var recoil := to_enemy.normalized()
+		enemy.global_position -= recoil * 0.28
 		camera_shake = 0.9
 		_spawn_bolt_effect(hero.global_position, enemy.global_position)
 		_spawn_impact_burst(enemy.global_position)
