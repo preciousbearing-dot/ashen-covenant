@@ -352,7 +352,7 @@ func _build_ui() -> void:
 	joystick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(joystick_knob)
 
-	attack_button = _make_button(root, "ARCANE\\nBOLT", Vector2(-136, -112), Color(0.22, 0.34, 0.78))
+	attack_button = _make_button(root, "ARCANE BOLT", Vector2(get_viewport().get_visible_rect().size.x - 144, get_viewport().get_visible_rect().size.y - 196), Color(0.22, 0.34, 0.78))
 	attack_button.pressed.connect(_cast_arcane_bolt)
 	blink_button = _make_button(root, "BLINK", Vector2(get_viewport().get_visible_rect().size.x - 144, get_viewport().get_visible_rect().size.y - 112), Color(0.42, 0.24, 0.7))
 	blink_button.pressed.connect(_blink_step)
