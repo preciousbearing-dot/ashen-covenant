@@ -164,6 +164,59 @@ func _make_actor(body_name: String, color: Color, start_position: Vector3, is_he
 	mat.roughness = 0.45
 	mesh_node.material_override = mat
 	body.add_child(mesh_node)
+
+	# Readable character details: a mage's arcane focus and the Hollow's ember eyes.
+	var head := MeshInstance3D.new()
+	var head_mesh := SphereMesh.new()
+	head_mesh.radius = 0.31 if is_hero else 0.34
+	head_mesh.height = 0.62 if is_hero else 0.68
+	head.mesh = head_mesh
+	head.position = Vector3(0, 0.79, 0)
+	var head_mat := StandardMaterial3D.new()
+	head_mat.albedo_color = Color(0.12, 0.17, 0.34) if is_hero else Color(0.17, 0.11, 0.14)
+	head_mat.roughness = 0.72
+	head.material_override = head_mat
+	body.add_child(head)
+	if is_hero:
+		var staff := MeshInstance3D.new()
+		var staff_mesh := CylinderMesh.new()
+		staff_mesh.top_radius = 0.045
+		staff_mesh.bottom_radius = 0.065
+		staff_mesh.height = 1.55
+		staff.mesh = staff_mesh
+		staff.position = Vector3(0.55, 0.05, 0.0)
+		staff.rotation_degrees.z = -12
+		var staff_mat := StandardMaterial3D.new()
+		staff_mat.albedo_color = Color(0.24, 0.17, 0.13)
+		staff_mat.roughness = 0.85
+		staff.material_override = staff_mat
+		body.add_child(staff)
+		var focus := MeshInstance3D.new()
+		var focus_mesh := SphereMesh.new()
+		focus_mesh.radius = 0.16
+		focus_mesh.height = 0.32
+		focus.mesh = focus_mesh
+		focus.position = Vector3(0.68, 0.78, 0.0)
+		var focus_mat := StandardMaterial3D.new()
+		focus_mat.albedo_color = Color(0.3, 0.65, 1.0)
+		focus_mat.emission_enabled = true
+		focus_mat.emission = Color(0.12, 0.4, 1.0)
+		focus.material_override = focus_mat
+		body.add_child(focus)
+	else:
+		for eye_x in [-0.14, 0.14]:
+			var eye := MeshInstance3D.new()
+			var eye_mesh := SphereMesh.new()
+			eye_mesh.radius = 0.055
+			eye_mesh.height = 0.11
+			eye.mesh = eye_mesh
+			eye.position = Vector3(float(eye_x), 0.83, -0.29)
+			var eye_mat := StandardMaterial3D.new()
+			eye_mat.albedo_color = Color(1.0, 0.12, 0.08)
+			eye_mat.emission_enabled = true
+			eye_mat.emission = Color(0.85, 0.035, 0.015)
+			eye.material_override = eye_mat
+			body.add_child(eye)
 	var collision := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.42 if is_hero else 0.48
