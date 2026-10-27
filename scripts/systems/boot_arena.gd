@@ -192,12 +192,22 @@ func _make_actor(body_name: String, color: Color, start_position: Vector3, is_he
 	var body := CharacterBody3D.new()
 	body.name = body_name
 	body.position = start_position
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.42 if is_hero else 0.48
-	capsule.height = 1.5
+	var actor_mesh: Mesh
+	if is_hero:
+		var robe := CylinderMesh.new()
+		robe.top_radius = 0.22
+		robe.bottom_radius = 0.48
+		robe.height = 1.28
+		actor_mesh = robe
+	else:
+		var shell := CapsuleMesh.new()
+		shell.radius = 0.48
+		shell.height = 1.5
+		actor_mesh = shell
 	var mesh_node := MeshInstance3D.new()
 	mesh_node.name = "Visual"
-	mesh_node.mesh = capsule
+	mesh_node.mesh = actor_mesh
+	mesh_node.position.y = -0.08 if is_hero else 0.0
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.metallic = 0.15
@@ -218,6 +228,29 @@ func _make_actor(body_name: String, color: Color, start_position: Vector3, is_he
 	head.material_override = head_mat
 	body.add_child(head)
 	if is_hero:
+		var hood := MeshInstance3D.new()
+		var hood_mesh := SphereMesh.new()
+		hood_mesh.radius = 0.34
+		hood_mesh.height = 0.55
+		hood.mesh = hood_mesh
+		hood.position = Vector3(0, 0.9, -0.04)
+		var hood_mat := StandardMaterial3D.new()
+		hood_mat.albedo_color = Color(0.075, 0.095, 0.19)
+		hood_mat.roughness = 0.92
+		hood.material_override = hood_mat
+		body.add_child(hood)
+		for shoulder_x in [-0.29, 0.29]:
+			var shoulder := MeshInstance3D.new()
+			var shoulder_mesh := SphereMesh.new()
+			shoulder_mesh.radius = 0.22
+			shoulder_mesh.height = 0.28
+			shoulder.mesh = shoulder_mesh
+			shoulder.position = Vector3(float(shoulder_x), 0.38, 0)
+			var shoulder_mat := StandardMaterial3D.new()
+			shoulder_mat.albedo_color = Color(0.16, 0.22, 0.43)
+			shoulder_mat.metallic = 0.35
+			shoulder.material_override = shoulder_mat
+			body.add_child(shoulder)
 		var staff := MeshInstance3D.new()
 		var staff_mesh := CylinderMesh.new()
 		staff_mesh.top_radius = 0.045
@@ -244,6 +277,18 @@ func _make_actor(body_name: String, color: Color, start_position: Vector3, is_he
 		focus.material_override = focus_mat
 		body.add_child(focus)
 	else:
+		for shard_index in range(3):
+			var shard := MeshInstance3D.new()
+			var shard_mesh := PrismMesh.new()
+			shard_mesh.size = Vector3(0.24, 0.82, 0.24)
+			shard.mesh = shard_mesh
+			shard.position = Vector3(-0.34 + float(shard_index) * 0.34, 0.32, 0.16)
+			shard.rotation_degrees.z = -18.0 + float(shard_index) * 16.0
+			var shard_mat := StandardMaterial3D.new()
+			shard_mat.albedo_color = Color(0.24, 0.075, 0.095)
+			shard_mat.roughness = 0.82
+			shard.material_override = shard_mat
+			body.add_child(shard)
 		for eye_x in [-0.14, 0.14]:
 			var eye := MeshInstance3D.new()
 			var eye_mesh := SphereMesh.new()
