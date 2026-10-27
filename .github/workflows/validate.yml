@@ -1,0 +1,40 @@
+name: Validate Godot Project
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Godot 4.7.2 stable
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Print engine version
+        run: godot --version
+
+      - name: Import and parse project
+        run: godot --headless --editor --path . --quit
+
+      - name: Verify project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f project.godot
+          test -f scenes/levels/boot_arena.tscn
+          test -f scripts/systems/boot_arena.gd
+          test -f docs/GAME_DESIGN.md
+          echo "Required Milestone 0 files are present."
