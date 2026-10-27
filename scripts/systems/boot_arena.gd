@@ -14,6 +14,8 @@ var enemy_health := ENEMY_MAX_HEALTH
 var hero_health := 5
 var bolt_cooldown := 0.0
 var enemy_attack_cooldown := 0.0
+var enemy_windup := 0.0
+var enemy_is_winding_up := false
 var invulnerability := 0.0
 var joystick_vector := Vector2.ZERO
 var joystick_touch_index := -1
@@ -46,6 +48,11 @@ func _physics_process(delta: float) -> void:
 		return
 	bolt_cooldown = maxf(0.0, bolt_cooldown - delta)
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
+	if enemy_is_winding_up:
+		enemy_windup = maxf(0.0, enemy_windup - delta)
+		_update_enemy_windup()
+		if enemy_windup <= 0.0:
+			_resolve_enemy_attack()
 	invulnerability = maxf(0.0, invulnerability - delta)
 	enemy_hit_flash = maxf(0.0, enemy_hit_flash - delta)
 	_update_hero(delta)
@@ -359,7 +366,7 @@ func _update_hero(delta: float) -> void:
 		hero.look_at(hero.global_position + direction, Vector3.UP)
 
 func _update_enemy(delta: float) -> void:
-	if not is_instance_valid(enemy):
+	if not is_instance_valid(enemy) or enemy_is_winding_up:
 		return
 	var to_hero := hero.global_position - enemy.global_position
 	to_hero.y = 0
@@ -371,13 +378,45 @@ func _update_enemy(delta: float) -> void:
 		enemy.move_and_slide()
 		enemy.look_at(enemy.global_position + direction, Vector3.UP)
 	elif enemy_attack_cooldown <= 0.0:
+		# Give the player a readable tell and a short dodge window before damage resolves.
 		enemy_attack_cooldown = 1.25
-		if invulnerability <= 0.0:
-			hero_health -= 1
-			invulnerability = 0.65
-			_show_message("You were struck!")
-			if hero_health <= 0:
-				_finish_game(false)
+		enemy_windup = 0.48
+		enemy_is_winding_up = true
+		enemy.velocity = Vector3.ZERO
+		_show_message("ASHEN HOLLOW  •  WINDING UP")
+
+func _update_enemy_windup() -> void:
+	if not is_instance_valid(enemy):
+		return
+	var visual := enemy.get_node_or_null("Visual") as MeshInstance3D
+	if visual:
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.035)
+		visual.scale = Vector3.ONE * (1.0 + pulse * 0.09)
+		var material := visual.material_override as StandardMaterial3D
+		if material:
+			material.emission_enabled = true
+			material.emission = Color(1.0, 0.08, 0.025) * (0.35 + pulse * 0.75)
+
+func _resolve_enemy_attack() -> void:
+	enemy_is_winding_up = false
+	if not is_instance_valid(enemy) or game_over:
+		return
+	var visual := enemy.get_node_or_null("Visual") as MeshInstance3D
+	if visual:
+		visual.scale = Vector3.ONE
+		var material := visual.material_override as StandardMaterial3D
+		if material:
+			material.emission_enabled = false
+	var distance := enemy.global_position.distance_to(hero.global_position)
+	if distance <= 2.05 and invulnerability <= 0.0:
+		hero_health -= 1
+		invulnerability = 0.65
+		camera_shake = 0.55
+		_show_message("YOU WERE STRUCK!")
+		if hero_health <= 0:
+			_finish_game(false)
+	else:
+		_show_message("HOLLOW STRIKE  •  EVADED")
 
 func _update_actor_motion() -> void:
 	# Lightweight procedural idle/movement motion keeps both fighters alive without skeletal rigs.
@@ -727,6 +766,8 @@ func _restart_game() -> void:
 	invulnerability = 0.0
 	bolt_cooldown = 0.0
 	enemy_attack_cooldown = 0.0
+	enemy_windup = 0.0
+	enemy_is_winding_up = false
 	_build_hero()
 	_spawn_enemy()
 	restart_button.visible = false
