@@ -21,9 +21,3 @@ window/size/viewport_height=720
 window/size/window_width_override=960
 window/size/window_height_override=540
 window/stretch/mode="canvas_items"
-
-[input]
-ui_accept={
-"deadzone": 0.5,
-"events": [Object(InputEventKey,"physical_keycode":4194309)]
-}
