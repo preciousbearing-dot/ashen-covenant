@@ -2,7 +2,7 @@
 
 A mobile-first, dark epic fantasy action RPG prototype built with **Godot 4.7.2** and GDScript.
 
-> **Status:** Milestone 0 — technical foundation. This is an early project scaffold, not yet a playable game.
+ > **Status:** Milestone 1 — playable combat prototype. Early placeholder geometry is in use while the combat loop and presentation are refined.
 
 ## Project goals
 
@@ -14,7 +14,7 @@ A mobile-first, dark epic fantasy action RPG prototype built with **Godot 4.7.2*
 
 ## Current scope
 
-Milestone 0 establishes a bootable Godot project, source structure, documentation, validation workflow, and an Android debug-build workflow. Gameplay systems will be added in later milestones.
+Milestone 0 established the bootable Godot project and Android build pipeline. Milestone 1 adds a mobile-playable arena with movement, Arcane Bolt, Blink Step, enemy attacks, health, victory/defeat, and restart. Visual assets remain prototype placeholders.
 
 ## Requirements
 
