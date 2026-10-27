@@ -1,0 +1,44 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/systems/boot_arena.gd" id="1_boot"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(24, 24)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.12, 0.12, 0.16, 1)
+roughness = 0.95
+
+[sub_resource type="SphereMesh" id="SphereMesh_marker"]
+radius = 0.55
+height = 1.1
+
+[node name="BootArena" type="Node3D"]
+script = ExtResource("1_boot")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -25, 0)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 11, 14)
+rotation_degrees = Vector3(-35, 0, 0)
+current = true
+projection = 1
+size = 19.0
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_floor")
+surface_material_override/0 = SubResource("StandardMaterial3D_floor")
+
+[node name="HeroPlaceholder" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.6, 0)
+mesh = SubResource("SphereMesh_marker")
+
+[node name="WelcomeLabel" type="Label3D" parent="."]
+position = Vector3(0, 2.0, 0)
+text = "ASHEN COVENANT\nMILESTONE 0"
+font_size = 64
+pixel_size = 0.008
+billboard = 1
