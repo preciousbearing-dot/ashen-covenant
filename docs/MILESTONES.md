@@ -5,8 +5,8 @@
 - [x] Establish repository and default branch.
 - [x] Add Godot project and boot scene.
 - [x] Add source-control hygiene and project documentation.
-- [ ] Add automated project validation.
-- [ ] Add Android debug-build workflow.
+- [x] Add automated project validation workflow.
+- [x] Add Android debug-build workflow.
 - [ ] Verify a successful CI run and downloadable APK.
 - [ ] Install and launch APK on Redmi 14C; record results.
 
