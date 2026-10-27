@@ -31,6 +31,7 @@ var game_over := false
 var arena_camera: Camera3D
 var camera_shake := 0.0
 var enemy_hit_flash := 0.0
+var projectile_trail_clock := 0.0
 
 func _ready() -> void:
 	_build_arena()
@@ -49,6 +50,7 @@ func _physics_process(delta: float) -> void:
 	enemy_hit_flash = maxf(0.0, enemy_hit_flash - delta)
 	_update_hero(delta)
 	_update_enemy(delta)
+	_update_actor_motion()
 	_update_hit_feedback()
 	_update_camera(delta)
 	_update_hud()
@@ -377,6 +379,21 @@ func _update_enemy(delta: float) -> void:
 			if hero_health <= 0:
 				_finish_game(false)
 
+func _update_actor_motion() -> void:
+	# Lightweight procedural idle/movement motion keeps both fighters alive without skeletal rigs.
+	var now := float(Time.get_ticks_msec()) * 0.001
+	if is_instance_valid(hero):
+		var hero_visual := hero.get_node_or_null("Visual") as MeshInstance3D
+		if hero_visual:
+			var moving := Vector2(hero.velocity.x, hero.velocity.z).length() > 0.2
+			hero_visual.position.y = -0.08 + sin(now * (11.0 if moving else 2.2)) * (0.075 if moving else 0.025)
+			hero_visual.rotation.z = sin(now * (5.5 if moving else 1.4)) * (0.045 if moving else 0.018)
+	if is_instance_valid(enemy):
+		var enemy_visual := enemy.get_node_or_null("Visual") as MeshInstance3D
+		if enemy_visual:
+			enemy_visual.position.y = sin(now * 3.1 + 1.2) * 0.045
+			enemy_visual.rotation.z = sin(now * 2.0) * 0.025
+
 func _update_hit_feedback() -> void:
 	# Brief, readable flashes communicate damage without costly post-processing.
 	if is_instance_valid(hero):
@@ -546,45 +563,121 @@ func _cast_arcane_bolt() -> void:
 	bolt_cooldown = BOLT_COOLDOWN
 	var to_enemy := enemy.global_position - hero.global_position
 	to_enemy.y = 0
-	if to_enemy.length() <= 8.0:
-		enemy_health -= 1
-		enemy_hit_flash = 0.16
-		# A small recoil makes a confirmed hit feel physical, while keeping the fight readable.
-		var recoil := to_enemy.normalized()
-		enemy.global_position -= recoil * 0.28
-		camera_shake = 0.9
-		_spawn_bolt_effect(hero.global_position, enemy.global_position)
-		_spawn_impact_burst(enemy.global_position)
-		var enemy_visual := enemy.get_node_or_null("Visual") as MeshInstance3D
-		if enemy_visual:
-			var original_scale := enemy_visual.scale
-			var hit_tween := create_tween()
-			enemy_visual.scale = original_scale * 1.12
-			hit_tween.tween_property(enemy_visual, "scale", original_scale, 0.16)
-		_show_message("ARCANE BOLT  •  HIT")
-		if enemy_health <= 0:
-			enemy.queue_free()
-			enemy = null
-			_show_message("ASHEN HOLLOW DEFEATED")
-			_finish_game(true)
-	else:
+	if to_enemy.length() > 8.0:
 		_show_message("TOO FAR — MOVE CLOSER")
+		return
+	# The spell now travels through the arena and resolves on arrival instead of applying an instant hitscan.
+	var launch_position := hero.global_position + Vector3(0.0, 0.82, 0.0)
+	var target_position := enemy.global_position + Vector3(0.0, 0.68, 0.0)
+	_play_cast_motion()
+	_spawn_bolt_effect(launch_position, target_position, enemy)
+	_show_message("ARCANE BOLT  •  CAST")
 
-func _spawn_bolt_effect(from: Vector3, to: Vector3) -> void:
-	var beam := MeshInstance3D.new()
-	var beam_mesh := BoxMesh.new()
-	beam_mesh.size = Vector3(0.095, 0.095, from.distance_to(to))
-	beam.mesh = beam_mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.28, 0.62, 1.0)
-	material.emission_enabled = true
-	material.emission = Color(0.16, 0.4, 1.0)
-	beam.material_override = material
-	beam.position = (from + to) * 0.5 + Vector3(0, 0.7, 0)
-	beam.look_at(to + Vector3(0, 0.7, 0), Vector3.UP)
-	add_child(beam)
-	var timer := get_tree().create_timer(0.14)
-	timer.timeout.connect(beam.queue_free)
+func _play_cast_motion() -> void:
+	var visual := hero.get_node_or_null("Visual") as MeshInstance3D
+	if not visual:
+		return
+	var original_rotation := visual.rotation
+	var cast_tween := create_tween()
+	cast_tween.tween_property(visual, "rotation:z", -0.24, 0.09)
+	cast_tween.tween_property(visual, "rotation:z", 0.10, 0.12)
+	cast_tween.tween_property(visual, "rotation:z", original_rotation.z, 0.14)
+
+func _spawn_bolt_effect(from: Vector3, to: Vector3, target: Node3D) -> void:
+	# A bright core, translucent-looking shell and trailing motes make the projectile read as a moving object.
+	var projectile := Node3D.new()
+	projectile.name = "ArcaneBoltProjectile"
+	var core := MeshInstance3D.new()
+	var core_mesh := SphereMesh.new()
+	core_mesh.radius = 0.19
+	core_mesh.height = 0.38
+	core.mesh = core_mesh
+	var core_material := StandardMaterial3D.new()
+	core_material.albedo_color = Color(0.58, 0.86, 1.0)
+	core_material.emission_enabled = true
+	core_material.emission = Color(0.2, 0.62, 1.0)
+	core_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	core.material_override = core_material
+	projectile.add_child(core)
+	var shell := MeshInstance3D.new()
+	var shell_mesh := SphereMesh.new()
+	shell_mesh.radius = 0.30
+	shell_mesh.height = 0.60
+	shell.mesh = shell_mesh
+	var shell_material := StandardMaterial3D.new()
+	shell_material.albedo_color = Color(0.18, 0.52, 1.0, 0.42)
+	shell_material.emission_enabled = true
+	shell_material.emission = Color(0.08, 0.28, 0.85)
+	shell_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	shell_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shell.material_override = shell_material
+	projectile.add_child(shell)
+	add_child(projectile)
+	projectile.global_position = from
+	projectile_trail_clock = 0.0
+	var flight := create_tween()
+	flight.set_trans(Tween.TRANS_CUBIC)
+	flight.set_ease(Tween.EASE_OUT)
+	flight.tween_method(Callable(self, "_animate_arcane_projectile").bind(projectile, from, to), 0.0, 1.0, 0.46)
+	flight.tween_callback(Callable(self, "_finish_arcane_projectile").bind(projectile, target, to))
+
+func _animate_arcane_projectile(progress: float, projectile: Node3D, from: Vector3, to: Vector3) -> void:
+	if not is_instance_valid(projectile):
+		return
+	var arc_height := 1.0 + sin(progress * PI) * 1.35
+	projectile.global_position = from.lerp(to, progress) + Vector3(0.0, arc_height, 0.0)
+	projectile.rotation.z = progress * TAU * 1.7
+	projectile.scale = Vector3.ONE * (1.0 + sin(progress * PI) * 0.18)
+	projectile_trail_clock += 0.016
+	if projectile_trail_clock >= 0.045:
+		projectile_trail_clock = 0.0
+		_spawn_arcane_mote(projectile.global_position)
+
+func _spawn_arcane_mote(at_position: Vector3) -> void:
+	var mote := MeshInstance3D.new()
+	var mote_mesh := SphereMesh.new()
+	mote_mesh.radius = 0.055
+	mote_mesh.height = 0.11
+	mote.mesh = mote_mesh
+	var mote_material := StandardMaterial3D.new()
+	mote_material.albedo_color = Color(0.35, 0.72, 1.0)
+	mote_material.emission_enabled = true
+	mote_material.emission = Color(0.16, 0.42, 1.0)
+	mote_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mote.material_override = mote_material
+	mote.position = at_position
+	add_child(mote)
+	var mote_tween := create_tween()
+	mote_tween.set_parallel(true)
+	mote_tween.tween_property(mote, "scale", Vector3.ZERO, 0.22)
+	mote_tween.tween_property(mote, "transparency", 1.0, 0.22)
+	mote_tween.chain().tween_callback(mote.queue_free)
+
+func _finish_arcane_projectile(projectile: Node3D, target: Node3D, impact_position: Vector3) -> void:
+	if is_instance_valid(projectile):
+		projectile.queue_free()
+	if not is_instance_valid(target) or target != enemy or game_over:
+		return
+	enemy_health -= 1
+	enemy_hit_flash = 0.16
+	var recoil := (enemy.global_position - hero.global_position)
+	recoil.y = 0.0
+	if recoil.length_squared() > 0.01:
+		enemy.global_position += recoil.normalized() * 0.28
+	camera_shake = 0.9
+	_spawn_impact_burst(enemy.global_position)
+	var enemy_visual := enemy.get_node_or_null("Visual") as MeshInstance3D
+	if enemy_visual:
+		var original_scale := enemy_visual.scale
+		var hit_tween := create_tween()
+		enemy_visual.scale = original_scale * 1.12
+		hit_tween.tween_property(enemy_visual, "scale", original_scale, 0.16)
+	_show_message("ARCANE BOLT  •  IMPACT")
+	if enemy_health <= 0:
+		enemy.queue_free()
+		enemy = null
+		_show_message("ASHEN HOLLOW DEFEATED")
+		_finish_game(true)
 
 func _spawn_impact_burst(at_position: Vector3) -> void:
 	for ring_index in range(2):
