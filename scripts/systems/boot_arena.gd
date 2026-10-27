@@ -29,6 +29,7 @@ var blink_button: Button
 var restart_button: Button
 var game_over := false
 var arena_camera: Camera3D
+var camera_shake := 0.0
 
 func _ready() -> void:
 	_build_arena()
@@ -46,7 +47,7 @@ func _physics_process(delta: float) -> void:
 	invulnerability = maxf(0.0, invulnerability - delta)
 	_update_hero(delta)
 	_update_enemy(delta)
-	_update_camera()
+	_update_camera(delta)
 	_update_hud()
 
 func _build_arena() -> void:
@@ -128,6 +129,32 @@ func _build_arena() -> void:
 			3: wall.position = Vector3(20, 0.5, 0)
 		add_child(wall)
 
+	# A restrained ritual seal creates a deliberate focal point for combat.
+	var seal_material := StandardMaterial3D.new()
+	seal_material.albedo_color = Color(0.12, 0.22, 0.38)
+	seal_material.emission_enabled = true
+	seal_material.emission = Color(0.035, 0.12, 0.3)
+	seal_material.roughness = 0.8
+	for ring_size in [3.2, 4.5]:
+		var seal_ring := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = float(ring_size)
+		torus.outer_radius = float(ring_size) + 0.055
+		seal_ring.mesh = torus
+		seal_ring.position.y = 0.04
+		seal_ring.material_override = seal_material
+		add_child(seal_ring)
+	for rune_index in range(12):
+		var angle := TAU * float(rune_index) / 12.0
+		var rune := MeshInstance3D.new()
+		var rune_mesh := BoxMesh.new()
+		rune_mesh.size = Vector3(0.18, 0.025, 0.62)
+		rune.mesh = rune_mesh
+		rune.position = Vector3(cos(angle) * 3.85, 0.045, sin(angle) * 3.85)
+		rune.rotation.y = -angle
+		rune.material_override = seal_material
+		add_child(rune)
+
 	# Broken-stone-like pillars establish a ruined arena silhouette.
 	var pillar_mat := StandardMaterial3D.new()
 	pillar_mat.albedo_color = Color(0.19, 0.18, 0.23)
@@ -137,8 +164,21 @@ func _build_arena() -> void:
 		pillar_mesh.size = Vector3(1.6, 2.0, 1.6)
 		pillar.mesh = pillar_mesh
 		pillar.position = p
+		pillar.rotation.y = 0.12 if p.x < 0 else -0.12
 		pillar.material_override = pillar_mat
 		add_child(pillar)
+		var crystal := MeshInstance3D.new()
+		var crystal_mesh := PrismMesh.new()
+		crystal_mesh.size = Vector3(0.48, 1.25, 0.48)
+		crystal.mesh = crystal_mesh
+		crystal.position = p + Vector3(0, 1.45, 0)
+		var crystal_mat := StandardMaterial3D.new()
+		crystal_mat.albedo_color = Color(0.15, 0.48, 0.8)
+		crystal_mat.emission_enabled = true
+		crystal_mat.emission = Color(0.06, 0.26, 0.68)
+		crystal_mat.roughness = 0.28
+		crystal.material_override = crystal_mat
+		add_child(crystal)
 
 	arena_camera = Camera3D.new()
 	arena_camera.position = Vector3(0, 12.5, 10.5)
@@ -289,10 +329,13 @@ func _update_enemy(delta: float) -> void:
 			if hero_health <= 0:
 				_finish_game(false)
 
-func _update_camera() -> void:
+func _update_camera(delta: float) -> void:
 	if is_instance_valid(hero) and is_instance_valid(arena_camera):
-		arena_camera.position.x = lerpf(arena_camera.position.x, hero.position.x, 0.06)
-		arena_camera.position.z = lerpf(arena_camera.position.z, hero.position.z + 10.5, 0.06)
+		camera_shake = maxf(0.0, camera_shake - delta * 2.8)
+		var shake_x := sin(Time.get_ticks_msec() * 0.07) * camera_shake * 0.13
+		var shake_y := cos(Time.get_ticks_msec() * 0.09) * camera_shake * 0.09
+		arena_camera.position.x = lerpf(arena_camera.position.x, hero.position.x, 0.06) + shake_x
+		arena_camera.position.z = lerpf(arena_camera.position.z, hero.position.z + 10.5, 0.06) + shake_y
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -437,7 +480,15 @@ func _cast_arcane_bolt() -> void:
 	to_enemy.y = 0
 	if to_enemy.length() <= 8.0:
 		enemy_health -= 1
+		camera_shake = 0.9
 		_spawn_bolt_effect(hero.global_position, enemy.global_position)
+		_spawn_impact_burst(enemy.global_position)
+		var enemy_visual := enemy.get_node_or_null("Visual") as MeshInstance3D
+		if enemy_visual:
+			var original_scale := enemy_visual.scale
+			var hit_tween := create_tween()
+			enemy_visual.scale = original_scale * 1.12
+			hit_tween.tween_property(enemy_visual, "scale", original_scale, 0.16)
 		_show_message("ARCANE BOLT  •  HIT")
 		if enemy_health <= 0:
 			enemy.queue_free()
@@ -449,11 +500,9 @@ func _cast_arcane_bolt() -> void:
 
 func _spawn_bolt_effect(from: Vector3, to: Vector3) -> void:
 	var beam := MeshInstance3D.new()
-	var cylinder := CylinderMesh.new()
-	cylinder.top_radius = 0.07
-	cylinder.bottom_radius = 0.07
-	cylinder.height = from.distance_to(to)
-	beam.mesh = cylinder
+	var beam_mesh := BoxMesh.new()
+	beam_mesh.size = Vector3(0.095, 0.095, from.distance_to(to))
+	beam.mesh = beam_mesh
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color(0.28, 0.62, 1.0)
 	material.emission_enabled = true
@@ -462,8 +511,28 @@ func _spawn_bolt_effect(from: Vector3, to: Vector3) -> void:
 	beam.position = (from + to) * 0.5 + Vector3(0, 0.7, 0)
 	beam.look_at(to + Vector3(0, 0.7, 0), Vector3.UP)
 	add_child(beam)
-	var timer := get_tree().create_timer(0.16)
+	var timer := get_tree().create_timer(0.14)
 	timer.timeout.connect(beam.queue_free)
+
+func _spawn_impact_burst(at_position: Vector3) -> void:
+	for ring_index in range(2):
+		var ring := MeshInstance3D.new()
+		var ring_mesh := TorusMesh.new()
+		ring_mesh.inner_radius = 0.22 + float(ring_index) * 0.14
+		ring_mesh.outer_radius = 0.28 + float(ring_index) * 0.14
+		ring.mesh = ring_mesh
+		ring.position = at_position + Vector3(0, 0.72, 0)
+		var ring_mat := StandardMaterial3D.new()
+		ring_mat.albedo_color = Color(0.35, 0.78, 1.0)
+		ring_mat.emission_enabled = true
+		ring_mat.emission = Color(0.2, 0.62, 1.0)
+		ring.material_override = ring_mat
+		add_child(ring)
+		var burst_tween := create_tween()
+		burst_tween.set_parallel(true)
+		burst_tween.tween_property(ring, "scale", Vector3.ONE * (2.0 + float(ring_index) * 0.5), 0.22)
+		burst_tween.tween_property(ring, "transparency", 1.0, 0.22)
+		burst_tween.chain().tween_callback(ring.queue_free)
 
 func _blink_step() -> void:
 	if game_over:
