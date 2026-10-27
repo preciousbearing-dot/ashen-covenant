@@ -1,0 +1,51 @@
+name: Godot Visual Smoke Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-arena:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Godot 4.7.2 stable
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: false
+
+      - name: Install virtual display and software renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes xvfb mesa-utils libgl1-mesa-dri
+
+      - name: Import project
+        run: godot --headless --editor --path . --quit
+
+      - name: Render arena screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 godot --path . --script res://tests/capture_arena.gd --quit-after 300
+
+      - name: Verify screenshot
+        run: |
+          test -s artifacts/ashen-covenant-arena.png
+          file artifacts/ashen-covenant-arena.png
+
+      - name: Upload rendered screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashen-covenant-visual-smoke
+          path: artifacts/ashen-covenant-arena.png
+          if-no-files-found: error
+          retention-days: 7
