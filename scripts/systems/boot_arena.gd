@@ -323,48 +323,64 @@ func _build_ui() -> void:
 
 	message_label = Label.new()
 	message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	message_label.position = Vector2(-250, 96)
-	message_label.custom_minimum_size = Vector2(500, 44)
+	message_label.offset_left = -250
+	message_label.offset_top = 92
+	message_label.offset_right = 250
+	message_label.offset_bottom = 132
 	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	message_label.add_theme_font_size_override("font_size", 23)
+	message_label.add_theme_font_size_override("font_size", 21)
 	message_label.add_theme_color_override("font_color", Color(0.75, 0.82, 1.0))
 	root.add_child(message_label)
 	message_label.text = "DEFEAT THE ASHEN HOLLOW"
 
+	# Anchor-based safe margins keep touch controls inside the visible viewport.
 	joystick_base = ColorRect.new()
 	joystick_base.color = Color(0.16, 0.19, 0.29, 0.62)
-	joystick_base.size = Vector2(148, 148)
-	joystick_base.position = Vector2(44, -184)
-	joystick_base.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE)
+	joystick_base.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	joystick_base.offset_left = 32
+	joystick_base.offset_top = -178
+	joystick_base.offset_right = 180
+	joystick_base.offset_bottom = -30
 	joystick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(joystick_base)
 	joystick_base.draw.connect(_draw_joystick_base)
-	joystick_center = Vector2(118, -110)
+	joystick_center = Vector2(106, -104)
 
 	joystick_knob = ColorRect.new()
 	joystick_knob.color = Color(0.48, 0.58, 0.9, 0.9)
-	joystick_knob.size = Vector2(58, 58)
-	joystick_knob.position = joystick_base.position + Vector2(45, 45)
-	joystick_knob.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_KEEP_SIZE)
+	joystick_knob.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	joystick_knob.offset_left = 77
+	joystick_knob.offset_top = -149
+	joystick_knob.offset_right = 135
+	joystick_knob.offset_bottom = -91
 	joystick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(joystick_knob)
 
-	attack_button = _make_button(root, "ARCANE\nBOLT", Vector2(-184, -180), Color(0.22, 0.34, 0.78))
+	attack_button = _make_button(root, "ARCANE\\nBOLT", Vector2(-136, -112), Color(0.22, 0.34, 0.78))
 	attack_button.pressed.connect(_cast_arcane_bolt)
-	blink_button = _make_button(root, "BLINK", Vector2(-106, -96), Color(0.42, 0.24, 0.7))
+	blink_button = _make_button(root, "BLINK", Vector2(-136, -28), Color(0.42, 0.24, 0.7))
 	blink_button.pressed.connect(_blink_step)
-	restart_button = _make_button(root, "RESTART", Vector2(-100, 18), Color(0.24, 0.3, 0.42))
-	restart_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_KEEP_SIZE)
-	restart_button.position = Vector2(-116, 18)
+	restart_button = Button.new()
+	restart_button.text = "RESTART"
+	restart_button.size = Vector2(100, 48)
+	restart_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	restart_button.offset_left = -118
+	restart_button.offset_top = 16
+	restart_button.offset_right = -18
+	restart_button.offset_bottom = 64
 	restart_button.pressed.connect(_restart_game)
+	root.add_child(restart_button)
 	restart_button.visible = false
 
 func _make_button(parent: Control, caption: String, offset: Vector2, tint: Color) -> Button:
 	var button := Button.new()
 	button.text = caption
 	button.size = Vector2(112, 72)
-	button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_KEEP_SIZE)
-	button.position = offset
+	button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	button.offset_left = offset.x
+	button.offset_top = offset.y
+	button.offset_right = offset.x + 112
+	button.offset_bottom = offset.y + 72
 	button.add_theme_font_size_override("font_size", 17)
 	button.add_theme_color_override("font_color", Color.WHITE)
 	var style := StyleBoxFlat.new()
@@ -390,7 +406,8 @@ func _input(event: InputEvent) -> void:
 	if game_over:
 		return
 	if event is InputEventScreenTouch:
-		var base_rect := Rect2(Vector2(44, get_viewport().get_visible_rect().size.y - 184), Vector2(148, 148))
+		var viewport_size := get_viewport().get_visible_rect().size
+		var base_rect := Rect2(Vector2(32, viewport_size.y - 178), Vector2(148, 148))
 		if event.pressed and base_rect.has_point(event.position) and joystick_touch_index == -1:
 			joystick_touch_index = event.index
 			_update_joystick(event.position)
@@ -408,18 +425,23 @@ func _input(event: InputEvent) -> void:
 
 func _update_joystick(screen_position: Vector2) -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
-	var center := Vector2(118, viewport_size.y - 110)
+	var center := Vector2(106, viewport_size.y - 104)
 	var delta := screen_position - center
 	if delta.length() > joystick_radius:
 		delta = delta.normalized() * joystick_radius
 	joystick_vector = Vector2(delta.x / joystick_radius, delta.y / joystick_radius)
 	if is_instance_valid(joystick_knob):
-		joystick_knob.position = Vector2(44, viewport_size.y - 184) + Vector2(45, 45) + delta
+		joystick_knob.offset_left = 77 + delta.x
+		joystick_knob.offset_top = -149 + delta.y
+		joystick_knob.offset_right = 135 + delta.x
+		joystick_knob.offset_bottom = -91 + delta.y
 
 func _reset_joystick_knob() -> void:
 	if is_instance_valid(joystick_knob):
-		var h := get_viewport().get_visible_rect().size.y
-		joystick_knob.position = Vector2(89, h - 139)
+		joystick_knob.offset_left = 77
+		joystick_knob.offset_top = -149
+		joystick_knob.offset_right = 135
+		joystick_knob.offset_bottom = -91
 
 func _cast_arcane_bolt() -> void:
 	if game_over or bolt_cooldown > 0.0 or not is_instance_valid(enemy):
