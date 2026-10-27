@@ -407,6 +407,11 @@ func _resolve_enemy_attack() -> void:
 		var material := visual.material_override as StandardMaterial3D
 		if material:
 			material.emission_enabled = false
+	var attack_direction := hero.global_position - enemy.global_position
+	attack_direction.y = 0.0
+	if attack_direction.length_squared() > 0.01:
+		_spawn_enemy_strike(hero.global_position, attack_direction.normalized())
+		_play_enemy_lunge(attack_direction.normalized())
 	var distance := enemy.global_position.distance_to(hero.global_position)
 	if distance <= 2.05 and invulnerability <= 0.0:
 		hero_health -= 1
@@ -417,6 +422,41 @@ func _resolve_enemy_attack() -> void:
 			_finish_game(false)
 	else:
 		_show_message("HOLLOW STRIKE  •  EVADED")
+
+
+func _play_enemy_lunge(direction: Vector3) -> void:
+	if not is_instance_valid(enemy):
+		return
+	var start_position := enemy.global_position
+	var lunge_position := start_position + direction * 0.58
+	var lunge := create_tween()
+	lunge.tween_property(enemy, "global_position", lunge_position, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	lunge.tween_property(enemy, "global_position", start_position, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _spawn_enemy_strike(at_position: Vector3, direction: Vector3) -> void:
+	# A fast crimson crescent makes the Hollow's committed strike visible, even when dodged.
+	var slash := MeshInstance3D.new()
+	slash.name = "HollowStrikeArc"
+	var arc_mesh := TorusMesh.new()
+	arc_mesh.inner_radius = 0.48
+	arc_mesh.outer_radius = 0.62
+	slash.mesh = arc_mesh
+	slash.position = at_position + Vector3(0.0, 0.92, 0.0) + direction * 0.34
+	slash.rotation = Vector3(PI * 0.5, atan2(direction.x, direction.z), 0.0)
+	slash.scale = Vector3(0.7, 1.0, 0.7)
+	var slash_material := StandardMaterial3D.new()
+	slash_material.albedo_color = Color(1.0, 0.12, 0.18, 0.9)
+	slash_material.emission_enabled = true
+	slash_material.emission = Color(1.0, 0.035, 0.07) * 1.8
+	slash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	slash_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	slash.material_override = slash_material
+	add_child(slash)
+	var slash_tween := create_tween()
+	slash_tween.set_parallel(true)
+	slash_tween.tween_property(slash, "scale", Vector3(1.65, 0.45, 1.65), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	slash_tween.tween_property(slash, "transparency", 1.0, 0.22)
+	slash_tween.chain().tween_callback(slash.queue_free)
 
 func _update_actor_motion() -> void:
 	# Lightweight procedural idle/movement motion keeps both fighters alive without skeletal rigs.
