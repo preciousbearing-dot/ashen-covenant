@@ -739,17 +739,72 @@ func _spawn_impact_burst(at_position: Vector3) -> void:
 		burst_tween.chain().tween_callback(ring.queue_free)
 
 func _blink_step() -> void:
-	if game_over:
+	if game_over or not is_instance_valid(hero):
 		return
 	var direction := Vector3(joystick_vector.x, 0, joystick_vector.y)
 	if direction.length_squared() < 0.05:
 		direction = -hero.global_transform.basis.z
 		direction.y = 0
 	if direction.length_squared() > 0.01:
-		hero.global_position += direction.normalized() * BLINK_DISTANCE
-		hero.position.x = clampf(hero.position.x, -17.5, 17.5)
-		hero.position.z = clampf(hero.position.z, -13.5, 13.5)
-		_show_message("BLINK STEP")
+		var departure := hero.global_position
+		var destination := departure + direction.normalized() * BLINK_DISTANCE
+		destination.x = clampf(destination.x, -17.5, 17.5)
+		destination.z = clampf(destination.z, -13.5, 13.5)
+		_spawn_blink_departure(departure)
+		hero.global_position = destination
+		_spawn_blink_arrival(destination)
+		invulnerability = maxf(invulnerability, 0.22)
+		_show_message("BLINK STEP  •  PHASE SHIFT")
+
+func _spawn_blink_departure(at_position: Vector3) -> void:
+	# Leave a brief spectral echo where the mage began the phase shift.
+	var visual := hero.get_node_or_null("Visual") as MeshInstance3D
+	if visual:
+		var ghost := visual.duplicate() as MeshInstance3D
+		if ghost:
+			add_child(ghost)
+			ghost.global_transform = visual.global_transform
+			var ghost_material := StandardMaterial3D.new()
+			ghost_material.albedo_color = Color(0.36, 0.68, 1.0, 0.48)
+			ghost_material.emission_enabled = true
+			ghost_material.emission = Color(0.16, 0.48, 1.0)
+			ghost_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			ghost_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			ghost.material_override = ghost_material
+			var fade := create_tween()
+			fade.set_parallel(true)
+			fade.tween_property(ghost, "transparency", 1.0, 0.24)
+			fade.tween_property(ghost, "scale", Vector3.ONE * 0.62, 0.24)
+			fade.chain().tween_callback(ghost.queue_free)
+	_spawn_blink_ring(at_position, Color(0.22, 0.52, 1.0))
+
+func _spawn_blink_arrival(at_position: Vector3) -> void:
+	_spawn_blink_ring(at_position, Color(0.55, 0.36, 1.0))
+	var visual := hero.get_node_or_null("Visual") as MeshInstance3D
+	if visual:
+		visual.scale = Vector3(1.18, 0.82, 1.18)
+		var arrival_tween := create_tween()
+		arrival_tween.tween_property(visual, "scale", Vector3.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _spawn_blink_ring(at_position: Vector3, tint: Color) -> void:
+	var ring := MeshInstance3D.new()
+	var ring_mesh := TorusMesh.new()
+	ring_mesh.inner_radius = 0.28
+	ring_mesh.outer_radius = 0.38
+	ring.mesh = ring_mesh
+	ring.position = at_position + Vector3(0.0, 0.09, 0.0)
+	var ring_material := StandardMaterial3D.new()
+	ring_material.albedo_color = tint
+	ring_material.emission_enabled = true
+	ring_material.emission = tint
+	ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring.material_override = ring_material
+	add_child(ring)
+	var burst := create_tween()
+	burst.set_parallel(true)
+	burst.tween_property(ring, "scale", Vector3.ONE * 2.2, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	burst.tween_property(ring, "transparency", 1.0, 0.28)
+	burst.chain().tween_callback(ring.queue_free)
 
 func _finish_game(victory: bool) -> void:
 	game_over = true
